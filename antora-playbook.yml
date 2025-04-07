@@ -4,7 +4,8 @@ site:
 
 content:
   sources:
-    - url: ./docs/ai-osd
+    - url: .
+      start_path: docs/ai-osd
       branches: HEAD
 
 ui:
