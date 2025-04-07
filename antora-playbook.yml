@@ -1,0 +1,16 @@
+site:
+  title: AI Oriented Software Development
+  start_page: ai-osd::index.adoc
+
+content:
+  sources:
+    - url: ./docs/ai-osd
+      branches: HEAD
+
+ui:
+  bundle:
+    url: https://gitlab.com/antora/antora-ui-default/-/jobs/artifacts/HEAD/raw/build/ui-bundle.zip?job=bundle-stable
+
+asciidoc:
+  attributes:
+    source-highlighter: highlight.js

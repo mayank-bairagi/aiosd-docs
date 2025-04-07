@@ -1,0 +1,120 @@
+= 🎯 DDD-Aware LLM Context Framework
+:navtitle: LLM Context Strategy for DDD
+:description: Blueprint for selecting code context for LLMs using Domain-Driven Design
+
+== 🎯 Goal
+
+Create a framework or blueprint that specifies *what* and *how much* of your codebase to supply to an LLM, in combination with requirements/user stories, when your system follows Domain-Driven Design.
+
+== 🧱 Foundation: What Makes DDD Special for LLM Context?
+
+DDD promotes clear, self-contained bounded contexts.
+
+- Entities, Value Objects, Aggregates, and Domain Services *encode business rules* — the LLM must understand them.
+- Application Layer *orchestrates*, bridging user intent and domain logic.
+- Infrastructure can be ignored for most LLM use cases (initial development, logic reasoning).
+
+== 🧠 The Generalized Strategy: “DDD-Aware LLM Context Framework”
+
+=== 🧩 1. Domain Layer
+
+[cols="1,3",options="header"]
+|===
+| Artifact Type | Inclusion Guidance
+
+| Entities       | ✅ Include signatures + relevant methods (skip getters/setters/toString)
+| ValueObjects   | ✅ Include complete class if small and self-contained
+| Aggregates     | ✅ Include public interface (methods + invariants)
+| Domain Services| ✅ Include signature and key methods
+| Domain Events  | ✅ Include if used in the flow
+| Repositories   | ✅ Only the interface; skip implementations
+| Enums / Types  | ✅ Include fully—they are often small and semantic
+|===
+
+==== 🛠 Option: Signature-Only View
+
+[source,kotlin]
+----
+class User(val id: UUID, val email: Email, val password: Password) {
+    fun register(): ...
+    fun activate(): ...
+}
+----
+
+This reduces token cost and still gives the LLM a high-level understanding.
+
+=== 🧩 2. Application Layer
+
+[cols="1,3",options="header"]
+|===
+| Artifact Type | Inclusion Guidance
+
+| Application Services | ✅ Include existing use cases as examples
+| Commands / DTOs       | ✅ Include fields + validation annotations if any
+| Service Interfaces     | ✅ Include if domain logic depends on abstractions (e.g. Hasher, Mailer)
+| Error Handling Models  | ✅ Include types for consistent result modeling
+|===
+
+🚦 *Tip:* Choose 1–2 relevant examples that match the type of user story (e.g., if the story is about creation, show `OrderService.createOrder()`).
+
+=== 🧩 3. User Story (Requirement)
+
+Prefer structured format (Gherkin, AsciiDoc, Markdown)
+
+Include:
+
+- User Story (Who, What, Why)
+- Acceptance Criteria (bullets or BDD-style)
+- Edge Cases and Security Considerations
+
+🧠 *Tip:* Use the user story as the *primary prompt*, and all the code as *context documents*.
+
+== 📦 Optional Context Enhancers
+
+[cols="1,3",options="header"]
+|===
+| Artifact | When to Include
+
+| Unit Tests        | To show business expectations
+| Validation Rules  | If decoupled from domain, e.g., custom annotations
+| UML/Class Diagrams| In design-phase generation
+|===
+
+== 🧰 Example Folder Strategy
+
+[source,plaintext]
+----
+📁 llm_context/
+├── domain/
+│   ├── entities/
+│   ├── valueobjects/
+│   └── repositories/
+├── application/
+│   └── services/
+├── user_story/
+│   └── registration.adoc
+----
+
+== 🧠 Smart Principles (Decision Matrix)
+
+[cols="1,3,2",options="header"]
+|===
+| Principle | Why it Matters | Apply When
+
+| Context over code volume  | LLMs perform better with clear, concise semantics | Prefer signatures and summaries
+| Bounded Context Isolation | Prevents domain leakage and improves relevance   | Use folder-based filtering
+| Semantic Density          | High business meaning per token                  | Prefer Value Objects, Aggregates
+| Orchestration Examples    | Helps LLM mimic correct flow                     | Provide 1–2 real Application Services
+|===
+
+== 📌 Final Checklist: What to Pass
+
+[cols="1,3",options="header"]
+|===
+| Layer       | Recommended Content
+
+| Domain      | Signatures of Entities, VOs, Aggregates, Interfaces
+| Application | Relevant Application Services + Command DTOs
+| Requirements| Structured User Story + Acceptance Criteria
+| Optional    | Domain Events, Value validation logic
+|===

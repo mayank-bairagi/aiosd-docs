@@ -1,0 +1,254 @@
+= 🚀 Building Better Software with Domain-Driven Design: A Step-by-Step Example
+Author Name
+:navtitle: Home
+:description: Domain Driven Design Distilled.
+:keywords: DDD, keyword2
+:doctype: book
+
+
+Domain-Driven Design (DDD) is a powerful way to design software by putting the business domain at the center. If you're a beginner wondering where to start, this guide will walk you through DDD step-by-step using a real-world example: a simple online bookstore.
+
+== 🔍 Step 1: Understand Your Domain
+
+Imagine you’re tasked with building an online bookstore from scratch. Orders are flying in, inventory’s a mess, and the boss wants it live yesterday. Where do you start? Step one: know your domain. For us, that’s an online bookstore with these core concepts:
+
+- Books are sold online.
+- Customers place orders for books.
+- We track inventory.
+- Orders are confirmed, paid for, and shipped.
+
+[quote]
+____
+✨ *Design Insight*: Start by chatting with domain experts or stakeholders—like the bookstore owner or shipping team. DDD’s ubiquitous language is your team’s secret handshake: a shared vocabulary that keeps everyone on the same page.
+____
+
+== 🔑 Step 2: Define Entities and Value Objects
+
+=== ✅ Entities
+
+Entities have a unique identity that sticks with them through their lifecycle.
+
+[source,kotlin]
+----
+data class Customer(
+    val customerId: UUID,
+    val name: String,
+    val email: String,
+    val shippingAddress: Address
+)
+----
+
+=== ✅ Value Objects
+
+Value Objects don’t care about identity—they’re defined by their values and stay immutable.
+
+[source,kotlin]
+----
+data class Address(
+    val street: String,
+    val city: String,
+    val zipCode: String,
+    val country: String
+)
+----
+
+[quote]
+____
+✨ *Design Insight*: Use *Value Objects* for simplicity, immutability, and clarity.
+
+Value Objects can be stored either:
+
+- As embedded fields (e.g., `Address` as part of `Customer` table).
+- Or in separate tables (e.g., `OrderItem` as a list under `Order`).
+
+⚠️ *Important*: If a Value Object is stored in its own table and you assign it a primary key (e.g., `order_item_id`), it's only for technical database reasons. It does *not* change its role in the domain model.
+____
+
+[source,sql]
+----
+-- Embedded Value Object (Address inside Customer)
+CREATE TABLE customer (
+    customer_id UUID PRIMARY KEY,
+    name VARCHAR(100),
+    email VARCHAR(100),
+    address_street VARCHAR(100),
+    address_city VARCHAR(100),
+    address_zip_code VARCHAR(10),
+    address_country VARCHAR(50)
+);
+
+-- Value Object stored in its own table (OrderItem)
+CREATE TABLE order_items (
+    order_item_id UUID PRIMARY KEY,
+    order_id UUID,
+    book_id UUID,
+    quantity INT,
+    price DECIMAL(10,2)
+);
+----
+
+== 🛒 Step 3: Define Aggregates
+
+An Aggregate is a crew of related domain objects with one boss—the Aggregate Root—keeping everything consistent.
+
+*Example: Order as an Aggregate Root*
+
+[source,kotlin]
+----
+class Order(
+    val orderId: UUID,
+    val customer: Customer,
+    val orderItems: List<OrderItem>
+) {
+    var orderStatus: OrderStatus = OrderStatus.NEW
+        private set
+
+    fun confirmOrder(paymentConfirmed: Boolean) {
+        require(paymentConfirmed) { "Payment not confirmed" }
+        orderStatus = OrderStatus.CONFIRMED
+    }
+
+    fun shipOrder() {
+        require(orderStatus == OrderStatus.CONFIRMED) { "Order must be confirmed before shipping" }
+        orderStatus = OrderStatus.SHIPPED
+    }
+}
+----
+
+[quote]
+____
+✨ *Design Insight*:
+
+- Aggregates ensure consistency and encapsulate business rules.
+- Aggregates are responsible for transactions. A transaction boundary should *never* span multiple aggregates.
+____
+
+== 📦 Step 4: Repositories - Saving and Loading Aggregates
+
+Repositories are your Aggregate’s personal assistants, fetching and storing them.
+
+[source,kotlin]
+----
+interface OrderRepository {
+    fun findById(orderId: UUID): Order?
+    fun save(order: Order)
+}
+----
+
+[quote]
+____
+✨ *Design Insight*: Keep repository interfaces in the *domain layer*, but put their implementations in the *infrastructure layer*.
+____
+
+== ⚙️ Step 5: Application Layer - Orchestration
+
+The Application Layer is the conductor, waving the baton but not playing the instruments.
+
+[source,kotlin]
+----
+class OrderService(
+    private val orderRepository: OrderRepository,
+    private val paymentService: PaymentService,
+    private val inventoryService: InventoryService
+) {
+    fun confirmOrder(orderId: UUID, paymentId: UUID) {
+        val order = orderRepository.findById(orderId)
+            ?: throw IllegalArgumentException("Order not found")
+
+        val paymentConfirmed = paymentService.verifyPayment(paymentId, order.totalAmount)
+        order.confirmOrder(paymentConfirmed)
+
+        orderRepository.save(order)
+    }
+}
+----
+
+[quote]
+____
+✨ *Design Insight*: This layer’s a traffic cop—directing domain objects but never writing the rules. Business logic stays in the domain, not here.
+____
+
+== 🕵️‍♂️ Step 6: Domain Services
+
+Some logic doesn’t fit neatly in an Entity. Enter Domain Services.
+
+*Example: ShippingCostCalculator*
+
+[source,kotlin]
+----
+class ShippingCostCalculator {
+    fun calculateShippingCost(order: Order): BigDecimal {
+        return if (order.customer.shippingAddress.country == "USA") BigDecimal(5) else BigDecimal(15)
+    }
+}
+----
+
+[quote]
+____
+✨ *Design Insight*: Domain Services live in the domain layer and contain pure business logic that spans multiple aggregates.
+____
+
+== 🛠️ Step 7: Infrastructure Layer
+
+This layer’s the toolbox—databases, APIs, and techy bits.
+
+[source,kotlin]
+----
+class InMemoryOrderRepository : OrderRepository {
+    private val orders = mutableMapOf<UUID, Order>()
+    override fun findById(orderId: UUID) = orders[orderId]
+    override fun save(order: Order) { orders[order.orderId] = order }
+}
+----
+
+[quote]
+____
+✨ *Design Insight*: Infrastructure implements the domain’s interfaces, keeping the core logic clean and free of framework baggage.
+____
+
+== 📊 Where to Put Behavior?
+
+[cols="1,1,3"]
+|===
+| Type | Owns Behavior? | Examples
+
+| Entity | ✅ Yes | `Order.confirmOrder()`
+| Value Object | ✅ Maybe | `Money.add()`, `Address.format()`
+| Domain Service | ✅ Yes | `ShippingCostCalculator`
+| Application Service | ❌ No | Coordinates behavior
+|===
+
+[quote]
+____
+✨ *Design Insight*: Behavior’s like furniture—put it where it fits best. Start with the Entity; if it’s awkward, call in a Domain Service.
+____
+
+== 📂 Suggested Directory Structure
+
+[source,text]
+----
+src/main/kotlin/com/marketplace/
+├── domain
+│   ├── entities
+│   ├── valueobjects
+│   ├── repositories
+│   └── services               <-- Domain Services go here
+├── application
+│   └── services               <-- Application Services go here
+├── infrastructure
+│   └── repositories           <-- In-memory or DB-backed implementations
+└── Main.kt
+----
+
+[quote]
+____
+✨ *Design Insight*: This structure keeps your domain model clean and separate from orchestration and infrastructure logic.
+____
+
+== Layered Architecture in Domain-Driven Design
+
+image::ddd-flow.png[DDD Layered Architecture, width=500]
+
+== 🧵 Conclusion: Putting It All Together
+
+DDD isn’t about flashy tools—it’s about making your code work for the business, not the other way around. This little bookstore experiment shows how to split domain logic from tech noise, bundle behavior where it belongs, and let services and infrastructure play nice. Try it on your next project—your future self will thank you.

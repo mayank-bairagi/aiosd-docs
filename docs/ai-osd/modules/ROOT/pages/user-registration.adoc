@@ -1,0 +1,41 @@
+= User Registration
+:navtitle: User Registration
+:description: Details the user story and acceptance criteria for user registration.
+
+== User Story
+
+As a new visitor to the bookstore, I want to create an account using my email and a password, so that I can purchase books and manage my orders.
+
+== Acceptance Criteria
+
+. **Account Creation Form**
+* The system must provide a registration form accessible from the homepage.
+* The form must include fields for:
+** Full Name
+** Email Address
+** Password
+** Password Confirmation
+
+. **Input Validation**
+* All fields are required.
+* The email address must be in a valid format (e.g., user@example.com).
+* The password must be at least 8 characters long and include a combination of letters and numbers.
+* The password confirmation must match the password.
+
+. **Duplicate Account Prevention**
+* If a user attempts to register with an email address that is already in use, the system must display an error message: "An account with this email already exists."
+
+. **Successful Registration**
+* Upon successful registration, the system must:
+** Create a new user account with the provided information.
+** Redirect the user to a welcome page or their account dashboard.
+** Display a confirmation message: "Your account has been successfully created."
+
+. **Error Handling**
+* If any validation errors occur, the system must:
+** Highlight the affected fields.
+** Provide descriptive error messages to guide the user in correcting the input.
+
+. **Security Measures**
+* Passwords must be stored securely using industry-standard hashing algorithms.
+* The system must protect against common security threats such as SQL injection and cross-site scripting (XSS).
